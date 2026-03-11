@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JROTC">
+<meta name="theme-color" content="#0e0000">
+<title>Marine JROTC Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: #0a0a0a; color: #e0dbd0; font-family: Georgia, serif; max-width: 460px; margin: 0 auto; min-height: 100vh; }
+  button { font-family: Georgia, serif; cursor: pointer; }
+  .mono { font-family: 'Courier New', monospace; }
+
+  #header { background: #0e0000; border-bottom: 2px solid #7a1a1a; padding: 14px 18px 10px; position: sticky; top: 0; z-index: 50; }
+  #header-top { display: flex; justify-content: space-between; align-items: center; }
+  #header-left .eyebrow { font-size: 8px; letter-spacing: 5px; color: #7a1a1a; }
+  #header-left .title { font-size: 17px; font-weight: bold; letter-spacing: 1px; }
+  #header-right { text-align: right; }
+  #header-right .countdown { font-size: 9px; color: #555; }
+  #header-right .countdown.soon { color: #B22234; }
+  #header-right .pos { font-size: 9px; color: #444; }
+  #progress-bar { display: flex; gap: 3px; margin-top: 8px; }
+  .prog-seg { flex: 1; height: 2px; border-radius: 1px; background: #1e1e1e; }
+  .prog-seg.past { background: #7a1a1a; }
+  .prog-seg.current { background: #B22234; }
+  #progress-label { font-size: 8px; color: #333; margin-top: 3px; letter-spacing: 0.5px; }
+
+  #nav { display: flex; background: #0f0f0f; border-bottom: 1px solid #181818; }
+  .nav-btn { flex: 1; padding: 10px 4px; background: none; border: none; border-bottom: 2px solid transparent; color: #3a3a3a; font-size: 9px; letter-spacing: 2px; }
+  .nav-btn.active { border-bottom-color: #B22234; color: #e0dbd0; }
+
+  #content { padding: 14px 14px 100px; }
+
+  .selectors { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+  .sel-btn { padding: 3px 8px; border-radius: 2px; border: 1px solid #1e1e1e; background: #141414; color: #444; font-size: 9px; }
+  .sel-btn.active { background: #7a1a1a; border-color: #7a1a1a; color: #fff; }
+  .sel-btn.week { padding: 3px 10px; }
+  .sel-btn.week.active { background: #3a1010; border-color: #7a1a1a; color: #e0dbd0; }
+
+  #day-tabs { display: flex; gap: 3px; margin-bottom: 14px; }
+  .day-tab { flex: 1; padding: 6px 2px; border-radius: 2px; background: #111; border: 1px solid #161616; cursor: pointer; text-align: center; }
+  .day-tab.active { background: #150000; border-color: #7a1a1a; }
+  .day-tab.today-tab { border-color: #B22234; }
+  .day-tab.complete { border-color: #1a3a1a; }
+  .day-tab .dt-name { font-size: 8px; color: #444; letter-spacing: 1px; }
+  .day-tab.active .dt-name, .day-tab.today-tab .dt-name { color: #B22234; }
+  .day-tab .dt-date { font-size: 7px; color: #2a2a2a; margin-top: 1px; }
+  .day-tab .dt-prog { font-size: 7px; color: #2a2a2a; margin-top: 1px; }
+  .day-tab.complete .dt-prog { color: #4a8a4a; }
+
+  #day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  #day-label { font-size: 15px; font-weight: bold; }
+  #day-sub { font-size: 9px; color: #555; letter-spacing: 1px; margin-top: 2px; }
+  #day-ring { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  #day-ring-inner { width: 32px; height: 32px; border-radius: 50%; background: #0a0a0a; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #e0dbd0; }
+
+  .task-item { display: flex; gap: 10px; align-items: flex-start; padding: 11px 11px; margin-bottom: 5px; border-radius: 3px; cursor: pointer; background: #111; border: 1px solid #181818; transition: background 0.1s, border-color 0.1s; }
+  .task-item.done { background: #091309; border-color: #1c3a1c; }
+  .task-cb { width: 18px; height: 18px; border-radius: 3px; flex-shrink: 0; margin-top: 1px; border: 1.5px solid #2e2e2e; background: none; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; transition: all 0.1s; }
+  .task-cb.checked { background: #4a8a4a; border-color: #4a8a4a; }
+  .task-text { font-size: 12px; color: #c8c4bc; flex: 1; line-height: 1.5; }
+  .task-item.done .task-text { color: #4a7a4a; text-decoration: line-through; }
+  .task-cat { font-size: 7px; letter-spacing: 1px; padding: 2px 4px; border-radius: 2px; flex-shrink: 0; margin-top: 2px; }
+
+  #complete-banner { text-align: center; padding: 20px; margin-top: 6px; background: #091309; border: 1px solid #1c3a1c; border-radius: 3px; display: none; }
+  #complete-banner.show { display: block; }
+
+  .habit-group-label { font-size: 9px; letter-spacing: 2px; color: #555; margin-bottom: 8px; }
+  .habit-item { display: flex; gap: 10px; align-items: center; padding: 11px 11px; margin-bottom: 4px; border-radius: 3px; cursor: pointer; background: #111; border: 1px solid #181818; transition: all 0.1s; }
+  .habit-item.done { background: #091309; border-color: #1c3a1c; }
+  .habit-text { font-size: 12px; color: #c8c4bc; }
+  .habit-item.done .habit-text { color: #4a7a4a; text-decoration: line-through; }
+
+  .reset-btn { width: 100%; padding: 9px; background: none; border: 1px solid #1e1e1e; border-radius: 3px; color: #3a3a3a; font-size: 8px; letter-spacing: 2px; margin-top: 12px; }
+
+  .plan-item { padding: 13px; margin-bottom: 6px; border-radius: 3px; cursor: pointer; background: #0f0f0f; border: 1px solid #181818; border-left: 3px solid #250000; transition: all 0.1s; }
+  .plan-item.active { background: #0f0000; border-color: #7a1a1a; border-left-color: #B22234; }
+  .plan-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .plan-num { font-size: 20px; font-weight: bold; color: #7a1a1a; }
+  .plan-name { font-size: 13px; font-weight: bold; }
+  .plan-tag { font-size: 11px; color: #555; margin-top: 1px; }
+  .plan-dates { font-size: 9px; color: #444; text-align: right; flex-shrink: 0; margin-left: 8px; line-height: 1.6; }
+
+  .jrotc-tile { margin-top: 6px; padding: 13px; background: #0a0900; border: 1px solid #2a2000; border-left: 3px solid #8a6000; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; }
+  .jrotc-title { font-size: 13px; font-weight: bold; color: #c8a020; }
+  .jrotc-sub { font-size: 11px; color: #666; margin-top: 1px; }
+  .jrotc-days { font-size: 20px; font-weight: bold; color: #8a6000; }
+
+  .start-table { margin-top: 16px; padding: 13px; background: #0d0000; border: 1px solid #1e0000; border-radius: 3px; }
+  .start-row { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #180000; }
+  .start-key { font-size: 10px; color: #7a1a1a; flex-shrink: 0; width: 72px; }
+  .start-val { font-size: 11px; color: #777; line-height: 1.4; }
+
+  #footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 8px; background: #0a0a0a; border-top: 1px solid #141414; font-size: 8px; letter-spacing: 4px; color: #1e1e1e; max-width: 460px; margin: 0 auto; }
+
+  .hidden { display: none !important; }
+  .view { display: none; }
+  .view.active { display: block; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <div id="header-left">
+      <div class="eyebrow mono">MARINE JROTC</div>
+      <div class="title">TRAINING PLAN</div>
+    </div>
+    <div id="header-right">
+      <div id="countdown-label" class="countdown mono"></div>
+      <div id="pos-label" class="pos mono"></div>
+    </div>
+  </div>
+  <div id="progress-bar"></div>
+  <div id="progress-label" class="mono">Mar 17 ──────────────────── Aug 7</div>
+</div>
+
+<div id="nav">
+  <button class="nav-btn mono active" onclick="setView('today')">TODAY</button>
+  <button class="nav-btn mono" onclick="setView('habits')">HABITS</button>
+  <button class="nav-btn mono" onclick="setView('plan')">PLAN</button>
+</div>
+
+<div id="content">
+  <div id="view-today" class="view active"></div>
+  <div id="view-habits" class="view"></div>
+  <div id="view-plan" class="view"></div>
+</div>
+
+<div id="footer" class="mono">SEMPER FIDELIS</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+const PROGRAM_START = new Date(2026, 2, 17);
+const JROTC_START   = new Date(2026, 7, 7);
+const DAY_MS = 86400000;
+const DAY_NAMES = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+
+function addDays(base, n) { return new Date(base.getTime() + n * DAY_MS); }
+function fmt(d) { return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+function daysUntil(t) { const n = new Date(); n.setHours(0,0,0,0); return Math.ceil((t - n) / DAY_MS); }
+
+function getSlotDate(mi, wi, dn) {
+  return addDays(PROGRAM_START, (mi*4 + wi)*7 + DAY_NAMES.indexOf(dn));
+}
+
+function getTodayPos() {
+  const t = new Date(); t.setHours(0,0,0,0);
+  const diff = Math.round((t - PROGRAM_START) / DAY_MS);
+  if (diff < 0 || diff >= 168) return null;
+  const tw = Math.floor(diff / 7);
+  return { mi: Math.min(Math.floor(tw/4),5), wi: Math.min(tw%4,3), dn: DAY_NAMES[diff%7] };
+}
+
+const MONTHS = [
+  { num:1, name:"Just Start", tag:"Show up. Do the work. Nothing else matters yet.", weeks:[
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"a1",text:"3 perfect push-ups (elbows 45°, chest to floor)",cat:"pushup"},
+        {id:"a2",text:"Rest 2 min → 3 more perfect push-ups",cat:"pushup"},
+        {id:"a3",text:"Rest 2 min → 3 more perfect push-ups",cat:"pushup"},
+        {id:"a4",text:"5 pull-up negatives (jump up, 5-sec lower)",cat:"pullup"},
+        {id:"a5",text:"Rest 90 sec → 5 more negatives",cat:"pullup"},
+        {id:"a6",text:"10 scapular pulls (hang, squeeze shoulder blades down)",cat:"pullup"},
+    ]}, TUE:{ label:"Run/Walk", tasks:[
+        {id:"b1",text:"5 min brisk walk to warm up",cat:"run"},
+        {id:"b2",text:"Run 1 min, walk 2 min — repeat 4×",cat:"run"},
+        {id:"b3",text:"5 min easy walk to cool down",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"c1",text:"3 sets of 3 perfect push-ups (2 min rest between)",cat:"pushup"},
+        {id:"c2",text:"20 crunches",cat:"core"},
+        {id:"c3",text:"30-sec plank",cat:"core"},
+        {id:"c4",text:"15 leg raises",cat:"core"},
+        {id:"c5",text:"Repeat the circuit once more",cat:"core"},
+    ]}, THU:{ label:"Run/Walk", tasks:[
+        {id:"d1",text:"5 min brisk walk",cat:"run"},
+        {id:"d2",text:"Run 1 min, walk 2 min — repeat 4×",cat:"run"},
+        {id:"d3",text:"5 min easy walk",cat:"run"},
+    ]}, FRI:{ label:"Pull-ups + Push-ups", tasks:[
+        {id:"e1",text:"3 perfect push-ups × 3 sets",cat:"pushup"},
+        {id:"e2",text:"5 pull-up negatives × 3 sets",cat:"pullup"},
+        {id:"e3",text:"5 chin-up negatives (palms toward you) × 2 sets",cat:"pullup"},
+    ]}, SAT:{ label:"Long Walk/Run", tasks:[
+        {id:"f1",text:"15–20 min continuous — any mix of walking and running",cat:"run"},
+        {id:"f2",text:"No pace goal — just keep moving the whole time",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"g1",text:"8–9 hours sleep last night",cat:"recovery"},
+        {id:"g2",text:"10 min gentle stretching",cat:"recovery"},
+        {id:"g3",text:"Drink water throughout the day",cat:"recovery"},
+    ]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"h1",text:"3 sets of 4 perfect push-ups",cat:"pushup"},
+        {id:"h2",text:"5 pull-up negatives × 3 sets",cat:"pullup"},
+        {id:"h3",text:"10 scapular pulls",cat:"pullup"},
+    ]}, TUE:{ label:"Run/Walk", tasks:[
+        {id:"i1",text:"5 min walk warm-up",cat:"run"},
+        {id:"i2",text:"Run 90 sec, walk 90 sec — repeat 5×",cat:"run"},
+        {id:"i3",text:"5 min walk cool-down",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"j1",text:"3 sets of 5 push-ups",cat:"pushup"},
+        {id:"j2",text:"25 crunches, 35-sec plank, 15 leg raises",cat:"core"},
+        {id:"j3",text:"Repeat circuit",cat:"core"},
+    ]}, THU:{ label:"Run/Walk", tasks:[
+        {id:"k1",text:"Run 90 sec, walk 90 sec — repeat 5×",cat:"run"},
+        {id:"k2",text:"5 min cool-down walk",cat:"run"},
+    ]}, FRI:{ label:"Pull-ups + Push-ups", tasks:[
+        {id:"l1",text:"4 sets of 5 push-ups",cat:"pushup"},
+        {id:"l2",text:"5 pull-up negatives × 4 sets",cat:"pullup"},
+    ]}, SAT:{ label:"Long Walk/Run", tasks:[
+        {id:"m1",text:"20 min continuous — try to run slightly more than last week",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"n1",text:"8–9 hours sleep",cat:"recovery"},
+        {id:"n2",text:"10 min stretching",cat:"recovery"},
+    ]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"o1",text:"3 sets of 6 push-ups",cat:"pushup"},
+        {id:"o2",text:"5 negatives × 3 sets",cat:"pullup"},
+        {id:"o3",text:"10 scapular pulls",cat:"pullup"},
+    ]}, TUE:{ label:"Run/Walk", tasks:[
+        {id:"p1",text:"Run 2 min, walk 1 min — repeat 5×",cat:"run"},
+        {id:"p2",text:"5 min cool-down walk",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"q1",text:"3 sets of 7 push-ups",cat:"pushup"},
+        {id:"q2",text:"30 crunches, 40-sec plank, 20 leg raises",cat:"core"},
+        {id:"q3",text:"Repeat circuit",cat:"core"},
+    ]}, THU:{ label:"Run/Walk", tasks:[
+        {id:"r1",text:"Run 2 min, walk 1 min — repeat 5×",cat:"run"},
+    ]}, FRI:{ label:"Pull-ups + Push-ups", tasks:[
+        {id:"s1",text:"4 sets of 7 push-ups",cat:"pushup"},
+        {id:"s2",text:"5 negatives × 4 sets",cat:"pullup"},
+    ]}, SAT:{ label:"Long Walk/Run", tasks:[
+        {id:"t1",text:"25 min — try to run more than you walk",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"u1",text:"Rest, stretch, hydrate",cat:"recovery"},
+    ]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"v1",text:"3 sets of 8 push-ups",cat:"pushup"},
+        {id:"v2",text:"5 negatives × 4 sets",cat:"pullup"},
+        {id:"v3",text:"10 scapular pulls",cat:"pullup"},
+    ]}, TUE:{ label:"Run", tasks:[
+        {id:"w1",text:"Run 3 min, walk 1 min — repeat 4×",cat:"run"},
+        {id:"w2",text:"5 min cool-down walk",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"x1",text:"3 sets of 10 push-ups",cat:"pushup"},
+        {id:"x2",text:"35 crunches, 45-sec plank, 20 leg raises",cat:"core"},
+        {id:"x3",text:"Repeat circuit",cat:"core"},
+    ]}, THU:{ label:"Run", tasks:[
+        {id:"y1",text:"Run 3 min, walk 1 min — repeat 4×",cat:"run"},
+    ]}, FRI:{ label:"Full Upper", tasks:[
+        {id:"z1",text:"Max push-ups with good form — write the number down",cat:"pushup"},
+        {id:"z2",text:"5 negatives × 4 sets",cat:"pullup"},
+    ]}, SAT:{ label:"Long Run", tasks:[
+        {id:"aa1",text:"Try to run 0.75 miles without stopping",cat:"run"},
+        {id:"aa2",text:"Walk the rest — total 25–30 min of movement",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"bb1",text:"Rest, stretch, hydrate",cat:"recovery"},
+    ]}}},
+  ]},
+  { num:2, name:"Build the Base", tag:"Runs get longer. Reps climbing. First real pull-ups.", weeks:[
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"m2a1",text:"4 sets of 10 push-ups",cat:"pushup"},
+        {id:"m2a2",text:"5 negatives × 4 sets",cat:"pullup"},
+        {id:"m2a3",text:"5 chin-up negatives × 3 sets",cat:"pullup"},
+    ]}, TUE:{ label:"Easy Run", tasks:[
+        {id:"m2b1",text:"Run 5 min, walk 1 min — repeat 3×",cat:"run"},
+        {id:"m2b2",text:"5 min cool-down walk",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"m2c1",text:"3 sets of 12 push-ups",cat:"pushup"},
+        {id:"m2c2",text:"40 crunches, 50-sec plank, 20 leg raises",cat:"core"},
+        {id:"m2c3",text:"Repeat circuit",cat:"core"},
+    ]}, THU:{ label:"Intervals", tasks:[
+        {id:"m2d1",text:"Run 1 min hard, walk 2 min — repeat 6×",cat:"run"},
+    ]}, FRI:{ label:"Full Upper", tasks:[
+        {id:"m2e1",text:"4 sets of 12 push-ups",cat:"pushup"},
+        {id:"m2e2",text:"First attempt at unassisted pull-ups, then fill with negatives",cat:"pullup"},
+    ]}, SAT:{ label:"Long Run", tasks:[
+        {id:"m2f1",text:"Run 1 mile — walk breaks OK, note how many you needed",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"m2g1",text:"Rest, stretch, hydrate",cat:"recovery"},
+    ]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"m2h1",text:"4 sets of 12 push-ups",cat:"pushup"},
+        {id:"m2h2",text:"Pull-up attempts + negatives × 4 sets",cat:"pullup"},
+    ]}, TUE:{ label:"Easy Run", tasks:[
+        {id:"m2i1",text:"Run 6 min, walk 1 min — repeat 3×",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"m2j1",text:"3 sets of 15 push-ups",cat:"pushup"},
+        {id:"m2j2",text:"45 crunches, 55-sec plank, 25 leg raises × 2",cat:"core"},
+    ]}, THU:{ label:"Intervals", tasks:[
+        {id:"m2k1",text:"Run 90 sec hard, walk 90 sec — repeat 6×",cat:"run"},
+    ]}, FRI:{ label:"Full Upper", tasks:[
+        {id:"m2l1",text:"Max push-up set — write the number down",cat:"pushup"},
+        {id:"m2l2",text:"5 sets pull-up attempts + negatives",cat:"pullup"},
+    ]}, SAT:{ label:"Long Run", tasks:[
+        {id:"m2m1",text:"Run 1.25 miles — fewer walk breaks than last week",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"m2n1",text:"Rest, stretch, hydrate",cat:"recovery"},
+    ]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"m2o1",text:"4 sets of 15 push-ups",cat:"pushup"},
+        {id:"m2o2",text:"Pull-up attempts × 3 sets",cat:"pullup"},
+    ]}, TUE:{ label:"Easy Run", tasks:[
+        {id:"m2p1",text:"Run 8 min, walk 1 min — repeat 2×",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"m2q1",text:"3 sets of 15 push-ups",cat:"pushup"},
+        {id:"m2q2",text:"50 crunches, 60-sec plank, 25 leg raises × 2",cat:"core"},
+    ]}, THU:{ label:"Intervals", tasks:[
+        {id:"m2r1",text:"Run 2 min hard, walk 2 min — repeat 5×",cat:"run"},
+    ]}, FRI:{ label:"Full Upper", tasks:[
+        {id:"m2s1",text:"4 sets of 15 push-ups + 1 wide-grip set",cat:"pushup"},
+        {id:"m2s2",text:"Pull-up attempts + negatives × 4 sets",cat:"pullup"},
+    ]}, SAT:{ label:"Long Run", tasks:[
+        {id:"m2t1",text:"Run 1.5 miles — walk only if you absolutely need to",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"m2u1",text:"Rest, stretch, hydrate",cat:"recovery"},
+    ]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[
+        {id:"m2v1",text:"4 sets of 18 push-ups",cat:"pushup"},
+        {id:"m2v2",text:"Pull-up attempts × 4 sets",cat:"pullup"},
+    ]}, TUE:{ label:"Easy Run", tasks:[
+        {id:"m2w1",text:"Run 10 min continuous — slow and easy",cat:"run"},
+        {id:"m2w2",text:"Walk 2 min, run 5 more min",cat:"run"},
+    ]}, WED:{ label:"Push-ups + Core", tasks:[
+        {id:"m2x1",text:"4 sets of 18 push-ups",cat:"pushup"},
+        {id:"m2x2",text:"50 crunches, 60-sec plank, 30 leg raises × 2",cat:"core"},
+    ]}, THU:{ label:"Intervals", tasks:[
+        {id:"m2y1",text:"400m hard, walk 200m — repeat 5×",cat:"run"},
+    ]}, FRI:{ label:"Full Upper", tasks:[
+        {id:"m2z1",text:"Max push-up set — write it down",cat:"pushup"},
+        {id:"m2z2",text:"Pull-up attempts × 5 sets",cat:"pullup"},
+    ]}, SAT:{ label:"Long Run", tasks:[
+        {id:"m2aa1",text:"Run 1.75 miles — goal: no walk breaks",cat:"run"},
+    ]}, SUN:{ label:"Rest", tasks:[
+        {id:"m2bb1",text:"Rest, stretch, hydrate",cat:"recovery"},
+    ]}}},
+  ]},
+  { num:3, name:"First Mile", tag:"Run a full mile without stopping. Form is automatic.", weeks:[
+    { days:{ MON:{ label:"Upper Body", tasks:[{id:"3a1",text:"4 sets of 18 push-ups",cat:"pushup"},{id:"3a2",text:"Pull-ups max + negatives × 4 sets",cat:"pullup"}]},
+      TUE:{ label:"Easy Run", tasks:[{id:"3b1",text:"Run 1.5 miles easy — walk max 60 sec if needed",cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:"3c1",text:"3 sets of 20 push-ups",cat:"pushup"},{id:"3c2",text:"60 crunches, 75-sec plank, 30 leg raises × 2",cat:"core"}]},
+      THU:{ label:"Intervals", tasks:[{id:"3d1",text:"400m hard, 200m walk — repeat 6×",cat:"run"}]},
+      FRI:{ label:"Full Upper", tasks:[{id:"3e1",text:"4 sets of 20 push-ups",cat:"pushup"},{id:"3e2",text:"Target: 4 clean pull-ups each set",cat:"pullup"}]},
+      SAT:{ label:"Long Run", tasks:[{id:"3f1",text:"Run 1.75 miles — push for no walk breaks",cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:"3g1",text:"Rest, stretch, hydrate",cat:"recovery"}]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[{id:"3h1",text:"4 sets of 22 push-ups",cat:"pushup"},{id:"3h2",text:"5 pull-ups × 4 sets",cat:"pullup"}]},
+      TUE:{ label:"Easy Run", tasks:[{id:"3i1",text:"Run 1.75 miles easy pace",cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:"3j1",text:"3 sets of 22 push-ups",cat:"pushup"},{id:"3j2",text:"65 crunches, 80-sec plank, 30 leg raises × 2",cat:"core"}]},
+      THU:{ label:"Intervals", tasks:[{id:"3k1",text:"400m hard, 200m walk — repeat 6×",cat:"run"}]},
+      FRI:{ label:"Full Upper", tasks:[{id:"3l1",text:"4 sets of 22 push-ups",cat:"pushup"},{id:"3l2",text:"5 pull-ups × 4 sets",cat:"pullup"}]},
+      SAT:{ label:"Long Run", tasks:[{id:"3m1",text:"Run 2 miles — walk max 2× if needed",cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:"3n1",text:"Rest, stretch, hydrate",cat:"recovery"}]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[{id:"3o1",text:"4 sets of 25 push-ups",cat:"pushup"},{id:"3o2",text:"6 pull-ups × 4 sets",cat:"pullup"}]},
+      TUE:{ label:"Easy Run", tasks:[{id:"3p1",text:"Run 2 miles easy",cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:"3q1",text:"3 sets of 25 push-ups",cat:"pushup"},{id:"3q2",text:"70 crunches, 85-sec plank, 30 leg raises × 2",cat:"core"}]},
+      THU:{ label:"Intervals", tasks:[{id:"3r1",text:"Pyramid: 200m, 400m, 600m, 400m, 200m with equal rest",cat:"run"}]},
+      FRI:{ label:"Full Upper", tasks:[{id:"3s1",text:"4 sets of 25 push-ups + 1 diamond set",cat:"pushup"},{id:"3s2",text:"6 pull-ups × 5 sets",cat:"pullup"}]},
+      SAT:{ label:"Long Run", tasks:[{id:"3t1",text:"Run 2.25 miles",cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:"3u1",text:"Rest, stretch, hydrate",cat:"recovery"}]}}},
+    { days:{ MON:{ label:"Upper Body", tasks:[{id:"3v1",text:"4 sets of 28 push-ups",cat:"pushup"},{id:"3v2",text:"7 pull-ups × 4 sets",cat:"pullup"}]},
+      TUE:{ label:"Easy Run", tasks:[{id:"3w1",text:"Run 2.25 miles easy",cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:"3x1",text:"4 sets of 28 push-ups",cat:"pushup"},{id:"3x2",text:"75 crunches, 90-sec plank, 30 leg raises × 2",cat:"core"}]},
+      THU:{ label:"Intervals", tasks:[{id:"3y1",text:"400m hard × 7, walk 200m between",cat:"run"}]},
+      FRI:{ label:"Full Upper", tasks:[{id:"3z1",text:"Max push-up test — write it down",cat:"pushup"},{id:"3z2",text:"7 pull-ups × 5 sets",cat:"pullup"}]},
+      SAT:{ label:"🎯 First Mile", tasks:[{id:"3aa1",text:"Run 1 full mile without stopping 🎯",cat:"run"},{id:"3aa2",text:"Record your time",cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:"3bb1",text:"Rest, stretch, hydrate",cat:"recovery"}]}}},
+  ]},
+  { num:4, name:"Push Further", tag:"Mile is consistent. Build to 2 miles. Pull-ups growing.", weeks:
+    [0,1,2,3].map(wi=>({ days:{ MON:{ label:"Upper Body", tasks:[{id:`4a${wi}`,text:`4 sets of ${28+wi*3} push-ups`,cat:"pushup"},{id:`4b${wi}`,text:`${7+wi} pull-ups × 4 sets`,cat:"pullup"}]},
+      TUE:{ label:"Easy Run", tasks:[{id:`4c${wi}`,text:`Run ${1.5+wi*0.25} miles at comfortable pace`,cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:`4d${wi}`,text:`4 sets of ${28+wi*3} push-ups`,cat:"pushup"},{id:`4e${wi}`,text:"70 crunches, 90-sec plank, 30 leg raises × 2",cat:"core"}]},
+      THU:{ label:"Intervals", tasks:[{id:`4f${wi}`,text:"400m hard × 6, or ladder 200/400/600/400/200",cat:"run"}]},
+      FRI:{ label:"Full Upper", tasks:[{id:`4g${wi}`,text:"Max push-up test",cat:"pushup"},{id:`4h${wi}`,text:`${8+wi} pull-ups × 5 sets`,cat:"pullup"}]},
+      SAT:{ label:"Long Run", tasks:[{id:`4i${wi}`,text:`Run ${1.75+wi*0.25} miles — no walk breaks`,cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:`4j${wi}`,text:"Rest, stretch, hydrate",cat:"recovery"}]}}}))
+  },
+  { num:5, name:"Race Prep", tag:"3-mile is the target. Push-ups 40+. Pull-ups 10+.", weeks:
+    [0,1,2,3].map(wi=>({ days:{ MON:{ label:"Upper Body", tasks:[{id:`5a${wi}`,text:`4 sets of ${35+wi*3} push-ups`,cat:"pushup"},{id:`5b${wi}`,text:`${10+wi} pull-ups × 4 sets`,cat:"pullup"}]},
+      TUE:{ label:"Race Pace", tasks:[{id:`5c${wi}`,text:`${1.5+wi*0.5} miles at goal 8:00/mi pace`,cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:`5d${wi}`,text:`4 sets of ${35+wi*3} push-ups`,cat:"pushup"},{id:`5e${wi}`,text:"80 crunches, 90-sec plank × 2",cat:"core"}]},
+      THU:{ label:"Intervals", tasks:[{id:`5f${wi}`,text:"800m hard, 400m walk — repeat 4×",cat:"run"}]},
+      FRI:{ label:"Full Upper", tasks:[{id:`5g${wi}`,text:"Max push-up + pull-up test",cat:"pushup"}]},
+      SAT:{ label: wi===3?"🎯 3-Mile Benchmark":"Long Run", tasks: wi===3?[{id:"5bench",text:"Timed 3-mile run — record your time 🎯",cat:"run"}]:[{id:`5h${wi}`,text:`Run ${2+wi*0.35} miles`,cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:`5i${wi}`,text:"Rest, stretch, hydrate",cat:"recovery"}]}}}))
+  },
+  { num:6, name:"Peak", tag:"Mock PFT week 4. Sub-24:00. 15 pull-ups.", weeks:
+    [0,1,2,3].map(wi=>({ days:{ MON:{ label:"Upper Body", tasks:[{id:`6a${wi}`,text:"4 sets of 40+ push-ups",cat:"pushup"},{id:`6b${wi}`,text:"12–15 pull-ups × 4 sets",cat:"pullup"}]},
+      TUE:{ label:"Run", tasks:[{id:`6c${wi}`,text:wi<2?"3 miles at 8:00/mi pace":wi===2?"2 miles easy (taper)":"1.5 miles easy (PFT week)",cat:"run"}]},
+      WED:{ label:"Push-ups + Core", tasks:[{id:`6d${wi}`,text:"4 sets of 40+ push-ups",cat:"pushup"},{id:`6e${wi}`,text:"80+ crunches, 2-min plank × 2",cat:"core"}]},
+      THU:{ label:"Run", tasks:[{id:`6f${wi}`,text:wi<2?"800m repeats × 4":"Easy 20 min jog",cat:"run"}]},
+      FRI:{ label:"Upper", tasks:[{id:`6g${wi}`,text:wi===3?"Light flush — 2 sets push-ups only":"Max push-up + pull-up test",cat:"pushup"}]},
+      SAT:{ label: wi===3?"🎖️ MOCK PFT":"Long Run", tasks: wi===3?[
+        {id:"pft1",text:"Pull-ups to failure — record reps",cat:"pullup"},
+        {id:"pft2",text:"Rest 5 minutes",cat:"recovery"},
+        {id:"pft3",text:"Crunches — max in 2 minutes, record reps",cat:"core"},
+        {id:"pft4",text:"Rest 5 minutes",cat:"recovery"},
+        {id:"pft5",text:"3-mile timed run — goal: sub-24:00 🎖️",cat:"run"},
+      ]:[{id:`6h${wi}`,text:`Run ${2.5+wi*0.25} miles`,cat:"run"}]},
+      SUN:{ label:"Rest", tasks:[{id:`6i${wi}`,text:"Rest, stretch, hydrate",cat:"recovery"}]}}}))
+  },
+];
+
+const HABITS = [
+  {id:"wake",text:"Woke up at set time",group:"morning"},
+  {id:"bed",text:"Made bed immediately",group:"morning"},
+  {id:"face-am",text:"Washed face (morning)",group:"morning"},
+  {id:"teeth-am",text:"Brushed teeth (morning)",group:"morning"},
+  {id:"water",text:"Drank water first thing",group:"morning"},
+  {id:"nophone",text:"No phone first 30 min",group:"morning"},
+  {id:"face-pm",text:"Washed face (evening)",group:"evening"},
+  {id:"teeth-pm",text:"Brushed teeth (evening)",group:"evening"},
+  {id:"gear",text:"Laid out tomorrow's gear",group:"evening"},
+  {id:"log",text:"Wrote 3-line daily log",group:"evening"},
+  {id:"phonedown",text:"Phone down 45 min before bed",group:"evening"},
+  {id:"sleep",text:"In bed by target time",group:"evening"},
+];
+
+const CAT_COLOR = {run:"#1a5c35",pushup:"#7a1a1a",pullup:"#1a3568",core:"#4a3a10",recovery:"#252525"};
+const CAT_LABEL = {run:"RUN",pushup:"PUSH",pullup:"PULL",core:"CORE",recovery:"REST"};
+
+// ── STATE ─────────────────────────────────────────────────────
+const todayPos = getTodayPos();
+let state = {
+  mi: todayPos ? todayPos.mi : 0,
+  wi: todayPos ? todayPos.wi : 0,
+  dn: todayPos ? todayPos.dn : "MON",
+  view: "today",
+  done: {},
+  habits: {},
+};
+
+function save() {
+  try { localStorage.setItem("jrotc_done", JSON.stringify(state.done)); localStorage.setItem("jrotc_habits", JSON.stringify(state.habits)); } catch(e){}
+}
+function load() {
+  try {
+    const d = localStorage.getItem("jrotc_done"); if(d) state.done = JSON.parse(d);
+    const h = localStorage.getItem("jrotc_habits"); if(h) state.habits = JSON.parse(h);
+  } catch(e){}
+}
+
+load();
+
+// ── HELPERS ───────────────────────────────────────────────────
+function taskKey(mi, wi, tid) { return `${mi}-${wi}-${tid}`; }
+function today() { const t = new Date(); t.setHours(0,0,0,0); return t; }
+function todayKey() { return today().toISOString().split("T")[0]; }
+function habitKey(hid) { return `${todayKey()}-${hid}`; }
+
+function getDayData() {
+  const m = MONTHS[state.mi];
+  const w = m && m.weeks[state.wi];
+  return w && w.days[state.dn];
+}
+
+function getDayStats(mi, wi, dn) {
+  const m = MONTHS[mi]; const w = m && m.weeks[wi]; const d = w && w.days[dn];
+  if (!d) return {n:0,tot:0};
+  const tot = d.tasks.length;
+  const n = d.tasks.filter(t => state.done[taskKey(mi,wi,t.id)]).length;
+  return {n, tot};
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function render() {
+  renderHeader();
+  renderNav();
+  renderView();
+}
+
+function renderHeader() {
+  const du = daysUntil(JROTC_START);
+  const cdEl = document.getElementById("countdown-label");
+  if (du > 0) { cdEl.textContent = `${du}d until JROTC`; cdEl.className = "countdown mono" + (du <= 14 ? " soon" : ""); }
+  else if (du === 0) { cdEl.textContent = "🎖️ JROTC TODAY"; cdEl.className = "countdown mono soon"; }
+  else { cdEl.textContent = "JROTC STARTED"; cdEl.className = "countdown mono"; }
+  document.getElementById("pos-label").textContent = `Aug 7 · M${state.mi+1} W${state.wi+1}`;
+
+  const pb = document.getElementById("progress-bar");
+  pb.innerHTML = "";
+  MONTHS.forEach((_,i) => {
+    const s = document.createElement("div");
+    s.className = "prog-seg" + (i < state.mi ? " past" : i === state.mi ? " current" : "");
+    pb.appendChild(s);
+  });
+}
+
+function renderNav() {
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector(`.nav-btn[onclick="setView('${state.view}')"]`).classList.add("active");
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(`view-${state.view}`).classList.add("active");
+}
+
+function renderView() {
+  if (state.view === "today") renderToday();
+  else if (state.view === "habits") renderHabits();
+  else renderPlan();
+}
+
+function renderToday() {
+  const el = document.getElementById("view-today");
+  const m = MONTHS[state.mi];
+  const todayDate = today();
+
+  // Month selectors
+  let html = `<div class="selectors">`;
+  MONTHS.forEach((mo,i) => {
+    html += `<button class="sel-btn mono${state.mi===i?" active":""}" onclick="selectMonth(${i})">M${mo.num}</button>`;
+  });
+  html += `</div>`;
+
+  // Week selectors
+  html += `<div class="selectors">`;
+  m.weeks.forEach((_,i) => {
+    html += `<button class="sel-btn week mono${state.wi===i?" active":""}" onclick="selectWeek(${i})">W${i+1}</button>`;
+  });
+  html += `</div>`;
+
+  // Day tabs
+  html += `<div id="day-tabs">`;
+  DAY_NAMES.forEach(dn => {
+    const {n,tot} = getDayStats(state.mi, state.wi, dn);
+    const full = n===tot && tot>0;
+    const slotDate = getSlotDate(state.mi, state.wi, dn);
+    const isToday = slotDate.toDateString() === todayDate.toDateString();
+    const active = state.dn === dn;
+    let cls = "day-tab";
+    if (active) cls += " active";
+    else if (isToday) cls += " today-tab";
+    else if (full) cls += " complete";
+    html += `<div class="${cls}" onclick="selectDay('${dn}')">
+      <div class="dt-name mono">${dn}</div>
+      <div class="dt-date mono">${fmt(slotDate)}</div>
+      <div class="dt-prog mono">${full?"✓":tot>0?`${n}/${tot}`:"—"}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  const dayData = getDayData();
+  if (!dayData) { el.innerHTML = html + `<div style="text-align:center;padding:40px;color:#333;font-size:12px">No data</div>`; return; }
+
+  const tasks = dayData.tasks;
+  const done = tasks.filter(t => state.done[taskKey(state.mi,state.wi,t.id)]).length;
+  const pct = Math.round((done/tasks.length)*100);
+  const allDone = done === tasks.length;
+  const selDate = getSlotDate(state.mi, state.wi, state.dn);
+
+  const ringColor = allDone ? "#4a8a4a" : "#7a1a1a";
+  html += `<div id="day-header">
+    <div>
+      <div id="day-label">${dayData.label}</div>
+      <div id="day-sub" class="mono">${state.dn} ${fmt(selDate).toUpperCase()} · ${m.name.toUpperCase()} W${state.wi+1}</div>
+    </div>
+    <div id="day-ring" style="background:conic-gradient(${ringColor} ${pct*3.6}deg,#1a1a1a 0deg)">
+      <div id="day-ring-inner" style="color:${allDone?"#4a8a4a":"#e0dbd0"}" class="mono">${pct}%</div>
+    </div>
+  </div>`;
+
+  tasks.forEach(t => {
+    const k = taskKey(state.mi, state.wi, t.id);
+    const isDone = !!state.done[k];
+    html += `<div class="task-item${isDone?" done":""}" onclick="toggleTask('${k}')">
+      <div class="task-cb${isDone?" checked":""}">${isDone?"✓":""}</div>
+      <span class="task-text">${t.text}</span>
+      <span class="task-cat mono" style="background:${CAT_COLOR[t.cat]}33;color:${CAT_COLOR[t.cat]}">${CAT_LABEL[t.cat]}</span>
+    </div>`;
+  });
+
+  if (allDone) {
+    html += `<div style="text-align:center;padding:20px;margin-top:6px;background:#091309;border:1px solid #1c3a1c;border-radius:3px">
+      <div style="font-size:22px">🎖️</div>
+      <div style="font-size:9px;color:#4a8a4a;letter-spacing:3px;margin-top:4px" class="mono">DAY COMPLETE — SEMPER FI</div>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderHabits() {
+  const el = document.getElementById("view-habits");
+  const doneCount = HABITS.filter(h => state.habits[habitKey(h.id)]).length;
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:9px;letter-spacing:3px;color:#7a1a1a" class="mono">TODAY'S HABITS</div>
+    <div style="font-size:10px;color:${doneCount===HABITS.length?"#4a8a4a":"#666"}" class="mono">${doneCount}/${HABITS.length}</div>
+  </div>`;
+
+  ["morning","evening"].forEach(grp => {
+    html += `<div style="margin-bottom:20px">
+      <div class="habit-group-label mono">${grp==="morning"?"🌅 MORNING":"🌙 EVENING"}</div>`;
+    HABITS.filter(h=>h.group===grp).forEach(h => {
+      const k = habitKey(h.id);
+      const isDone = !!state.habits[k];
+      html += `<div class="habit-item${isDone?" done":""}" onclick="toggleHabit('${k}')">
+        <div class="task-cb${isDone?" checked":""}">${isDone?"✓":""}</div>
+        <span class="habit-text">${h.text}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<button class="reset-btn mono" onclick="resetHabits()">RESET FOR TODAY</button>`;
+  el.innerHTML = html;
+}
+
+function renderPlan() {
+  const el = document.getElementById("view-plan");
+  const du = daysUntil(JROTC_START);
+  let html = `<div style="font-size:9px;letter-spacing:3px;color:#7a1a1a;margin-bottom:14px" class="mono">6-MONTH OVERVIEW</div>`;
+
+  MONTHS.forEach((m,i) => {
+    const sd = getSlotDate(i,0,"MON"), ed = getSlotDate(i,3,"SUN");
+    html += `<div class="plan-item${state.mi===i?" active":""}" onclick="selectMonth(${i});setView('today')">
+      <div class="plan-row">
+        <div style="display:flex;gap:12px;align-items:baseline">
+          <span class="plan-num mono">0${m.num}</span>
+          <div><div class="plan-name">${m.name}</div><div class="plan-tag">${m.tag}</div></div>
+        </div>
+        <div class="plan-dates mono">${fmt(sd)}<br>↓<br>${fmt(ed)}</div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="jrotc-tile">
+    <div><div class="jrotc-title">🎖️ JROTC Begins</div><div class="jrotc-sub">August 7, 2026 — Day One</div></div>
+    <div class="jrotc-days mono">${du}d</div>
+  </div>`;
+
+  html += `<div class="start-table">
+    <div style="font-size:9px;letter-spacing:3px;color:#7a1a1a;margin-bottom:10px" class="mono">STARTING POINT</div>
+    ${[["Running","Run/walk intervals — can barely do a mile"],["Push-ups","3 perfect reps (resetting form)"],["Pull-ups","Building from zero with negatives"],["6-mo goal","Sub-24:00 3-mi · 15 pull-ups · 40+ push-ups"]].map(([k,v])=>`
+    <div class="start-row"><span class="start-key mono">${k}</span><span class="start-val">${v}</span></div>`).join("")}
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────
+function setView(v) { state.view = v; render(); }
+function selectMonth(i) { state.mi = i; state.wi = 0; render(); }
+function selectWeek(i) { state.wi = i; render(); }
+function selectDay(dn) { state.dn = dn; render(); }
+
+function toggleTask(k) {
+  state.done[k] = !state.done[k];
+  save(); renderToday();
+}
+
+function toggleHabit(k) {
+  state.habits[k] = !state.habits[k];
+  save(); renderHabits();
+}
+
+function resetHabits() {
+  const tk = todayKey();
+  HABITS.forEach(h => { delete state.habits[`${tk}-${h.id}`]; });
+  save(); renderHabits();
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
